@@ -14,5 +14,12 @@ export const updateProjectSchema = z.object({
   ownerId: z.string().uuid().optional(),
 });
 
+export const projectFilterQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().default(9),
+  search: z.string().optional(),
+});
+
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
+export type ProjectFilterQuery = z.infer<typeof projectFilterQuerySchema>;

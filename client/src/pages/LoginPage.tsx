@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { Zap, Lock, Mail, ArrowRight, ShieldCheck, UserCheck, Code2 } from 'lucide-react';
 
@@ -21,18 +22,26 @@ export const LoginPage: React.FC = () => {
     try {
       const res = await login(data.email, data.password);
       if (res.success) {
+        toast.success('Welcome back to Horizon!');
         navigate('/dashboard');
       } else {
-        setErrorMsg(res.error?.message || 'Invalid credentials');
+        const error = res.error?.message || 'Invalid credentials';
+        setErrorMsg(error);
+        toast.error(error);
       }
     } catch (err: any) {
       const message = err.response?.data?.error?.message;
       if (message) {
         setErrorMsg(message);
+        toast.error(message);
       } else if (err.code === 'ERR_NETWORK' || !err.response) {
-        setErrorMsg('Waking up server on Render free tier... Please wait 10 seconds and click Sign In again.');
+        const networkError = 'Waking up server on Render free tier... Please wait 10 seconds and click Sign In again.';
+        setErrorMsg(networkError);
+        toast.error('Server connection error. Please retry.');
       } else {
-        setErrorMsg('Failed to authenticate. Check server connection.');
+        const fallback = 'Failed to authenticate. Check server connection.';
+        setErrorMsg(fallback);
+        toast.error(fallback);
       }
     }
   };

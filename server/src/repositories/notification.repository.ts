@@ -12,6 +12,32 @@ export class NotificationRepository {
     });
   }
 
+  async findByRecipientPaginated(recipientId: string, page: number = 1, limit: number = 20) {
+    const where = { recipientId };
+    const skip = (page - 1) * limit;
+
+    const [notifications, totalCount] = await Promise.all([
+      prisma.notification.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          actor: { select: { id: true, name: true } },
+        },
+      }),
+      prisma.notification.count({ where }),
+    ]);
+
+    return {
+      notifications,
+      totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit) || 1,
+    };
+  }
+
   async countUnread(recipientId: string) {
     return prisma.notification.count({
       where: { recipientId, isRead: false },
@@ -29,6 +55,18 @@ export class NotificationRepository {
     return prisma.notification.updateMany({
       where: { recipientId, isRead: false },
       data: { isRead: true, readAt: new Date() },
+    });
+  }
+
+  async deleteById(id: string, recipientId: string) {
+    return prisma.notification.deleteMany({
+      where: { id, recipientId },
+    });
+  }
+
+  async deleteAllByRecipient(recipientId: string) {
+    return prisma.notification.deleteMany({
+      where: { recipientId },
     });
   }
 

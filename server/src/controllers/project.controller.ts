@@ -1,14 +1,24 @@
 import { Response, NextFunction } from 'express';
 import { projectService } from '../services/project.service';
-import { createProjectSchema, updateProjectSchema } from '../validators/project.validator';
+import { createProjectSchema, updateProjectSchema, projectFilterQuerySchema } from '../validators/project.validator';
 import { AuthenticatedRequest } from '../types';
 
 export class ProjectController {
   async getAll(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } });
-      const projects = await projectService.getProjectsForUser(req.user);
-      return res.json({ success: true, data: projects });
+      const filter = projectFilterQuerySchema.parse(req.query);
+      const result = await projectService.getProjectsForUser(req.user, filter);
+      return res.json({
+        success: true,
+        data: result.projects,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          totalCount: result.totalCount,
+          totalPages: result.totalPages,
+        },
+      });
     } catch (error) {
       next(error);
     }

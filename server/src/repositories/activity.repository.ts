@@ -43,6 +43,72 @@ export class ActivityRepository {
       },
     });
   }
+
+  async getRecentActivityPaginated(user: { id: string; role: Role }, page: number = 1, limit: number = 20) {
+    let where: any = {};
+
+    if (user.role === Role.ADMIN) {
+      where = {};
+    } else if (user.role === Role.PROJECT_MANAGER) {
+      where = {
+        project: { ownerId: user.id },
+      };
+    } else if (user.role === Role.DEVELOPER) {
+      where = {
+        task: { assignedDeveloperId: user.id },
+      };
+    }
+
+    const skip = (page - 1) * limit;
+    const [activities, totalCount] = await Promise.all([
+      prisma.activityLog.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, name: true, email: true, role: true } },
+          project: { select: { id: true, name: true } },
+          task: { select: { id: true, title: true } },
+        },
+      }),
+      prisma.activityLog.count({ where }),
+    ]);
+
+    return {
+      activities,
+      totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit) || 1,
+    };
+  }
+
+  async findByProjectPaginated(projectId: string, page: number = 1, limit: number = 20) {
+    const where = { projectId };
+    const skip = (page - 1) * limit;
+    const [activities, totalCount] = await Promise.all([
+      prisma.activityLog.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, name: true, role: true } },
+          task: { select: { id: true, title: true } },
+        },
+      }),
+      prisma.activityLog.count({ where }),
+    ]);
+
+    return {
+      activities,
+      totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit) || 1,
+    };
+  }
 }
 
 export const activityRepository = new ActivityRepository();

@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { apiClient } from '../lib/apiClient';
 import { useAuth } from '../hooks/useAuth';
-import { Task, TaskStatus } from '../types';
+import { Task, TaskStatus, PaginatedResponse } from '../types';
 import { TaskCard } from '../components/TaskCard';
 import { FilterBar } from '../components/FilterBar';
 import { TaskModal } from '../components/TaskModal';
+import { Pagination } from '../components/Pagination';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CheckSquare, Plus } from 'lucide-react';
 
 export const TasksPage: React.FC = () => {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -21,14 +23,37 @@ export const TasksPage: React.FC = () => {
 
   // Synchronize query parameters with TanStack Query key!
   const queryParams = searchParams.toString();
+  const currentPage = parseInt(searchParams.get('page') || '1', 10);
+  const currentLimit = parseInt(searchParams.get('limit') || '10', 10);
 
-  const { data: tasks, isLoading } = useQuery({
+  const { data: taskResponse, isLoading } = useQuery({
     queryKey: ['tasks', queryParams],
     queryFn: async () => {
-      const res = await apiClient.get(`/tasks?${queryParams}`);
-      return res.data.data as Task[];
+      const res = await apiClient.get<PaginatedResponse<Task>>(`/tasks?${queryParams}`);
+      return res.data;
     },
   });
+
+  const tasks = taskResponse?.data || [];
+  const pagination = taskResponse?.pagination || {
+    page: currentPage,
+    limit: currentLimit,
+    totalCount: 0,
+    totalPages: 1,
+  };
+
+  const handlePageChange = (newPage: number) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', newPage.toString());
+    setSearchParams(newParams);
+  };
+
+  const handlePageSizeChange = (newLimit: number) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('limit', newLimit.toString());
+    newParams.set('page', '1');
+    setSearchParams(newParams);
+  };
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -38,6 +63,10 @@ export const TasksPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      toast.success('Task created successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || err.response?.data?.error?.message || 'Failed to create task');
     },
   });
 
@@ -46,9 +75,13 @@ export const TasksPage: React.FC = () => {
       const res = await apiClient.patch(`/tasks/${taskId}/status`, { status });
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      toast.success(`Task moved to ${variables.status.replace('_', ' ')}`);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || err.response?.data?.error?.message || 'Failed to update status');
     },
   });
 
@@ -58,6 +91,10 @@ export const TasksPage: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Task deleted successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || err.response?.data?.error?.message || 'Failed to delete task');
     },
   });
 
@@ -108,16 +145,30 @@ export const TasksPage: React.FC = () => {
 
       {/* Tasks Grid */}
       {tasks && tasks.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onStatusChange={handleStatusChange}
-              onDelete={canCreate ? (id) => deleteTaskMutation.mutate(id) : undefined}
-              canEdit={canCreate}
-            />
-          ))}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onStatusChange={handleStatusChange}
+                onDelete={canCreate ? (id) => deleteTaskMutation.mutate(id) : undefined}
+                canEdit={canCreate}
+              />
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            totalCount={pagination.totalCount}
+            pageSize={pagination.limit}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            pageSizeOptions={[10, 25, 50]}
+            isLoading={isLoading}
+          />
         </div>
       ) : (
         <EmptyState

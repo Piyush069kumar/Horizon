@@ -18,11 +18,16 @@ export const FilterBar: React.FC = () => {
     } else {
       newParams.delete(key);
     }
+    // Reset to page 1 when filter parameters change
+    newParams.delete('page');
     setSearchParams(newParams);
   };
 
   const clearAllFilters = () => {
-    setSearchParams(new URLSearchParams());
+    const newParams = new URLSearchParams();
+    const limit = searchParams.get('limit');
+    if (limit) newParams.set('limit', limit);
+    setSearchParams(newParams);
   };
 
   const hasActiveFilters = Boolean(currentStatus || currentPriority || dueDateFrom || dueDateTo);

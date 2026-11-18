@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { CreateProjectInput, UpdateProjectInput } from '../validators/project.validator';
+import { Prisma } from '@prisma/client';
 
 export class ProjectRepository {
   async findById(id: string) {
@@ -47,6 +48,62 @@ export class ProjectRepository {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async findPaginated(options: {
+    ownerId?: string;
+    developerId?: string;
+    search?: string;
+    page: number;
+    limit: number;
+  }) {
+    const where: Prisma.ProjectWhereInput = {};
+
+    if (options.ownerId) {
+      where.ownerId = options.ownerId;
+    }
+
+    if (options.developerId) {
+      where.tasks = {
+        some: {
+          assignedDeveloperId: options.developerId,
+        },
+      };
+    }
+
+    if (options.search) {
+      where.OR = [
+        { name: { contains: options.search, mode: 'insensitive' } },
+        { description: { contains: options.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const page = options.page || 1;
+    const limit = options.limit || 9;
+    const skip = (page - 1) * limit;
+
+    const [projects, totalCount] = await Promise.all([
+      prisma.project.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          client: { select: { id: true, name: true, company: true } },
+          owner: { select: { id: true, name: true, email: true } },
+          _count: { select: { tasks: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.project.count({ where }),
+    ]);
+
+    return {
+      projects,
+      totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit) || 1,
+    };
   }
 
   async create(data: CreateProjectInput & { ownerId: string }) {

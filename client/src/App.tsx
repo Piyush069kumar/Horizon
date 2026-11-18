@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
 import { useAuth } from './hooks/useAuth';
 import { connectSocket } from './services/socketService';
 import { AppLayout } from './layouts/AppLayout';
@@ -52,6 +53,33 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#0f172a',
+            color: '#f8fafc',
+            border: '1px solid #334155',
+            borderRadius: '1rem',
+            fontSize: '0.8125rem',
+            padding: '0.75rem 1rem',
+            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#0f172a',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#f43f5e',
+              secondary: '#0f172a',
+            },
+          },
+        }}
+      />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

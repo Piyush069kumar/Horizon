@@ -39,14 +39,31 @@ export class TaskRepository {
       if (filter.dueDateTo) where.dueDate.lte = new Date(filter.dueDateTo);
     }
 
-    return prisma.task.findMany({
-      where,
-      include: {
-        project: { select: { id: true, name: true, ownerId: true } },
-        assignedDeveloper: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: [{ dueDate: 'asc' }, { priority: 'desc' }],
-    });
+    const page = filter.page || 1;
+    const limit = filter.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const [tasks, totalCount] = await Promise.all([
+      prisma.task.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          project: { select: { id: true, name: true, ownerId: true } },
+          assignedDeveloper: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: [{ dueDate: 'asc' }, { priority: 'desc' }],
+      }),
+      prisma.task.count({ where }),
+    ]);
+
+    return {
+      tasks,
+      totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit) || 1,
+    };
   }
 
   async create(data: CreateTaskInput) {

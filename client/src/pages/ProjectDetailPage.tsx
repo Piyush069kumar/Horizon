@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { apiClient } from '../lib/apiClient';
 import { useAuth } from '../hooks/useAuth';
 import { Project, Task, TaskStatus } from '../types';
@@ -44,6 +45,10 @@ export const ProjectDetailPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Task added to project');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || err.response?.data?.error?.message || 'Failed to create task');
     },
   });
 
@@ -52,9 +57,13 @@ export const ProjectDetailPage: React.FC = () => {
       const res = await apiClient.patch(`/tasks/${taskId}/status`, { status });
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success(`Task moved to ${variables.status.replace('_', ' ')}`);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || err.response?.data?.error?.message || 'Failed to update task status');
     },
   });
 
@@ -64,6 +73,10 @@ export const ProjectDetailPage: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
+      toast.success('Task deleted successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || err.response?.data?.error?.message || 'Failed to delete task');
     },
   });
 

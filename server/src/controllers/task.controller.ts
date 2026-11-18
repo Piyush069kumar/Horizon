@@ -13,8 +13,17 @@ export class TaskController {
     try {
       if (!req.user) return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } });
       const filter = taskFilterQuerySchema.parse(req.query);
-      const tasks = await taskService.getTasksForUser(filter, req.user);
-      return res.json({ success: true, data: tasks });
+      const result = await taskService.getTasksForUser(filter, req.user);
+      return res.json({
+        success: true,
+        data: result.tasks,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          totalCount: result.totalCount,
+          totalPages: result.totalPages,
+        },
+      });
     } catch (error) {
       next(error);
     }

@@ -1,19 +1,39 @@
 import { projectRepository } from '../repositories/project.repository';
-import { CreateProjectInput, UpdateProjectInput } from '../validators/project.validator';
+import { CreateProjectInput, UpdateProjectInput, ProjectFilterQuery } from '../validators/project.validator';
 import { AppError } from '../utils/errors';
 import { Role } from '@prisma/client';
 import { AuthenticatedUserPayload } from '../types';
 
 export class ProjectService {
-  async getProjectsForUser(user: AuthenticatedUserPayload) {
+  async getProjectsForUser(user: AuthenticatedUserPayload, filter: ProjectFilterQuery = { page: 1, limit: 9 }) {
     if (user.role === Role.ADMIN) {
-      return projectRepository.findAll();
+      return projectRepository.findPaginated({
+        search: filter.search,
+        page: filter.page,
+        limit: filter.limit,
+      });
     } else if (user.role === Role.PROJECT_MANAGER) {
-      return projectRepository.findAll(user.id);
+      return projectRepository.findPaginated({
+        ownerId: user.id,
+        search: filter.search,
+        page: filter.page,
+        limit: filter.limit,
+      });
     } else if (user.role === Role.DEVELOPER) {
-      return projectRepository.findForDeveloper(user.id);
+      return projectRepository.findPaginated({
+        developerId: user.id,
+        search: filter.search,
+        page: filter.page,
+        limit: filter.limit,
+      });
     }
-    return [];
+    return {
+      projects: [],
+      totalCount: 0,
+      page: filter.page,
+      limit: filter.limit,
+      totalPages: 1,
+    };
   }
 
   async getProjectById(id: string, user: AuthenticatedUserPayload) {

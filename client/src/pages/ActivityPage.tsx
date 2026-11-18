@@ -1,19 +1,49 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { apiClient } from '../lib/apiClient';
-import { ActivityLog } from '../types';
+import { ActivityLog, PaginatedResponse } from '../types';
 import { ActivityFeedItem } from '../components/ActivityFeedItem';
+import { Pagination } from '../components/Pagination';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { Activity, RefreshCw } from 'lucide-react';
 
 export const ActivityPage: React.FC = () => {
-  const { data: activityList, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['activity', 'recent'],
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const currentPage = parseInt(searchParams.get('page') || '1', 10);
+  const currentLimit = parseInt(searchParams.get('limit') || '20', 10);
+
+  const { data: activityResponse, isLoading, refetch, isRefetching } = useQuery({
+    queryKey: ['activity', 'recent', currentPage, currentLimit],
     queryFn: async () => {
-      const res = await apiClient.get('/activity/recent?limit=30');
-      return res.data.data as ActivityLog[];
+      const res = await apiClient.get<PaginatedResponse<ActivityLog>>(
+        `/activity/recent?page=${currentPage}&limit=${currentLimit}`
+      );
+      return res.data;
     },
   });
+
+  const activityList = activityResponse?.data || [];
+  const pagination = activityResponse?.pagination || {
+    page: currentPage,
+    limit: currentLimit,
+    totalCount: 0,
+    totalPages: 1,
+  };
+
+  const handlePageChange = (newPage: number) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', newPage.toString());
+    setSearchParams(newParams);
+  };
+
+  const handlePageSizeChange = (newLimit: number) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('limit', newLimit.toString());
+    newParams.set('page', '1');
+    setSearchParams(newParams);
+  };
 
   if (isLoading) return <LoadingSkeleton count={6} />;
 
@@ -47,6 +77,20 @@ export const ActivityPage: React.FC = () => {
           <p className="text-xs text-slate-500 text-center py-10">No recent activity recorded.</p>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {activityList && activityList.length > 0 && pagination && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          totalCount={pagination.totalCount}
+          pageSize={pagination.limit}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+          pageSizeOptions={[10, 20, 50]}
+          isLoading={isLoading || isRefetching}
+        />
+      )}
     </div>
   );
 };

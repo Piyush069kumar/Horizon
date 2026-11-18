@@ -23,7 +23,13 @@ export class TaskService {
       return taskRepository.findAll({ ...filter, assignedDeveloperId: user.id });
     }
 
-    return [];
+    return {
+      tasks: [],
+      totalCount: 0,
+      page: filter.page || 1,
+      limit: filter.limit || 10,
+      totalPages: 1,
+    };
   }
 
   async getTaskById(id: string, user: AuthenticatedUserPayload) {
@@ -52,8 +58,8 @@ export class TaskService {
 
     const task = await taskRepository.create(input);
 
-    // If developer was assigned, create persistent notification & emit real-time event
-    if (input.assignedDeveloperId) {
+    // If developer was assigned and is not the creator, create persistent notification & emit real-time event
+    if (input.assignedDeveloperId && input.assignedDeveloperId !== user.id) {
       const notification = await notificationRepository.create({
         recipientId: input.assignedDeveloperId,
         actorId: user.id,
@@ -78,8 +84,12 @@ export class TaskService {
 
     const updatedTask = await taskRepository.update(id, input);
 
-    // If developer assignment changed
-    if (input.assignedDeveloperId && input.assignedDeveloperId !== existingTask.assignedDeveloperId) {
+    // If developer assignment changed and is not the actor
+    if (
+      input.assignedDeveloperId &&
+      input.assignedDeveloperId !== existingTask.assignedDeveloperId &&
+      input.assignedDeveloperId !== user.id
+    ) {
       const notification = await notificationRepository.create({
         recipientId: input.assignedDeveloperId,
         actorId: user.id,

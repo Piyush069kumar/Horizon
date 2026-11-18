@@ -92,4 +92,19 @@ export interface TaskFilterParams {
   dueDateTo?: string;
   projectId?: string;
   assignedDeveloperId?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginationMetadata {
+  page: number;
+  limit: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean;
+  data: T[];
+  pagination: PaginationMetadata;
 }

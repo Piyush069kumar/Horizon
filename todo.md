@@ -32,16 +32,16 @@
 ---
 
 ## 3. Server-Side Pagination & List Performance
-- [ ] **Backend Pagination Support**:
-  - [ ] Add `page` and `limit` query parameters with Prisma `skip` and `take` to:
-    - [ ] `GET /api/activity` (Activity log timeline)
-    - [ ] `GET /api/tasks` (Global and project task listings)
-    - [ ] `GET /api/projects` (Projects catalog)
-    - [ ] `GET /api/notifications` (Notifications tray)
-  - [ ] Return standard pagination metadata: `{ items, pagination: { page, limit, totalCount, totalPages } }`
-- [ ] **Frontend Pagination UI**:
-  - [ ] Create a reusable `Pagination.tsx` component with `Previous`, `Next`, current page indicator, and page size selector (10, 25, 50)
-  - [ ] Integrate pagination into `TasksPage.tsx`, `ProjectsPage.tsx`, and `ActivityPage.tsx`
+- [x] **Backend Pagination Support**:
+  - [x] Add `page` and `limit` query parameters with Prisma `skip` and `take` to:
+    - [x] `GET /api/activity` (Activity log timeline)
+    - [x] `GET /api/tasks` (Global and project task listings)
+    - [x] `GET /api/projects` (Projects catalog)
+    - [x] `GET /api/notifications` (Notifications tray)
+  - [x] Return standard pagination metadata: `{ success: true, data: items, pagination: { page, limit, totalCount, totalPages } }`
+- [x] **Frontend Pagination UI**:
+  - [x] Create a reusable `Pagination.tsx` component with `Previous`, `Next`, current page indicator, and page size selector (10, 25, 50)
+  - [x] Integrate pagination into `TasksPage.tsx`, `ProjectsPage.tsx`, and `ActivityPage.tsx`
 
 ---
 
@@ -71,14 +71,17 @@
 ---
 
 ## 5. Notifications, Feedback & Real-Time Alerts
-- [ ] **Toast Notification System**:
-  - [ ] Integrate a sleek toast notification library (such as `sonner` or `react-hot-toast`)
-  - [ ] Trigger toasts on: task created, status updated, project saved, errors, and real-time socket events
-- [ ] **Real-Time Sound / Toast Alerts**:
-  - [ ] In-app toast notification when real-time socket events arrive (`task:assigned`, `task:in_review`)
-  - [ ] Notification badge animation on real-time arrival
-- [ ] **Notification Management**:
-  - [ ] Option to clear or delete individual / all notifications
+- [x] **Toast Notification System**:
+  - [x] Integrate a sleek toast notification library (`react-hot-toast`) with custom dark theme styling
+  - [x] Trigger toasts on: task created, status updated, project saved, errors, and real-time socket events
+- [x] **Real-Time Sound / Toast Alerts**:
+  - [x] In-app toast notification when real-time socket events arrive (`task:assigned`, `task:in_review`)
+  - [x] Real-time audio chime alert via Web Audio API (`playNotificationSound`)
+  - [x] Notification badge bounce animation on real-time arrival
+- [x] **Notification Management**:
+  - [x] Option to clear all notifications (`DELETE /api/notifications/clear-all`)
+  - [x] Option to delete individual notifications (`DELETE /api/notifications/:id`)
+  - [x] Quick mark-as-read and clear-all actions in `NotificationBell.tsx`
 
 ---
 

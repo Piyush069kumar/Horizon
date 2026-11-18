@@ -24,6 +24,8 @@ export const updateTaskStatusSchema = z.object({
 });
 
 export const taskFilterQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().default(10),
   status: z.nativeEnum(TaskStatus).optional(),
   priority: z.nativeEnum(Priority).optional(),
   dueDateFrom: z.string().optional(),

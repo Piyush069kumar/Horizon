@@ -1,13 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { apiClient } from '../lib/apiClient';
 import { AppNotification } from '../types';
-import { Bell, CheckCheck, Check, Clock } from 'lucide-react';
+import { subscribeNotificationAlert } from '../services/socketService';
+import { Bell, CheckCheck, Check, Clock, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 export const NotificationBell: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isWiggling, setIsWiggling] = useState(false);
   const queryClient = useQueryClient();
+
+  // Listen for real-time notification socket alerts to animate the bell icon
+  useEffect(() => {
+    const unsubscribe = subscribeNotificationAlert(() => {
+      setIsWiggling(true);
+      const timer = setTimeout(() => setIsWiggling(false), 2500);
+      return () => clearTimeout(timer);
+    });
+    return unsubscribe;
+  }, []);
 
   const { data: unreadData } = useQuery({
     queryKey: ['notifications-unread'],
@@ -34,6 +47,9 @@ export const NotificationBell: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['notifications-unread'] });
     },
+    onError: () => {
+      toast.error('Failed to mark notification as read');
+    },
   });
 
   const markAllReadMutation = useMutation({
@@ -43,22 +59,73 @@ export const NotificationBell: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['notifications-unread'] });
+      toast.success('All notifications marked as read');
+    },
+    onError: () => {
+      toast.error('Failed to mark all as read');
+    },
+  });
+
+  const deleteNotificationMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.delete(`/notifications/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-unread'] });
+      toast.success('Notification removed');
+    },
+    onError: () => {
+      toast.error('Failed to delete notification');
+    },
+  });
+
+  const clearAllMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.delete('/notifications/clear-all');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-unread'] });
+      toast.success('All notifications cleared');
+    },
+    onError: () => {
+      toast.error('Failed to clear notifications');
     },
   });
 
   const unreadCount = unreadData?.unreadCount || 0;
-  const notifications = notificationsData || [];
+
+  // Deduplicate notifications by unique ID so identical items never double-render in the UI list
+  const notifications = React.useMemo(() => {
+    if (!notificationsData) return [];
+    const seen = new Set<string>();
+    return notificationsData.filter((item) => {
+      if (!item.id || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [notificationsData]);
+
+  const handleToggle = () => {
+    setIsOpen(!isOpen);
+    if (!isOpen) {
+      setIsWiggling(false);
+    }
+  };
 
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors"
+        onClick={handleToggle}
+        className={`relative p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors ${
+          isWiggling ? 'animate-bounce text-brand-400' : ''
+        }`}
         title="Notifications"
       >
-        <Bell className="w-5 h-5" />
+        <Bell className={`w-5 h-5 ${isWiggling ? 'text-brand-400' : ''}`} />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex items-center justify-center min-w-4 h-4 px-1 text-[10px] font-bold text-white bg-rose-600 rounded-full animate-pulse">
+          <span className="absolute top-1 right-1 flex items-center justify-center min-w-4 h-4 px-1 text-[10px] font-bold text-white bg-rose-600 rounded-full animate-pulse shadow-sm shadow-rose-600/50">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -78,15 +145,28 @@ export const NotificationBell: React.FC = () => {
                   </span>
                 )}
               </div>
-              {unreadCount > 0 && (
-                <button
-                  onClick={() => markAllReadMutation.mutate()}
-                  className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium transition-colors"
-                >
-                  <CheckCheck className="w-3.5 h-3.5" />
-                  Mark all read
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={() => markAllReadMutation.mutate()}
+                    className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium transition-colors"
+                    title="Mark all as read"
+                  >
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    <span>Read all</span>
+                  </button>
+                )}
+                {notifications.length > 0 && (
+                  <button
+                    onClick={() => clearAllMutation.mutate()}
+                    className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 font-medium transition-colors ml-1"
+                    title="Clear all notifications"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Clear</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/60">
@@ -96,7 +176,7 @@ export const NotificationBell: React.FC = () => {
                 notifications.map((item) => (
                   <div
                     key={item.id}
-                    className={`p-3.5 flex items-start gap-3 transition-colors ${
+                    className={`p-3.5 flex items-start gap-3 transition-colors group ${
                       item.isRead ? 'bg-slate-950/40 opacity-75' : 'bg-brand-950/20'
                     }`}
                   >
@@ -107,15 +187,24 @@ export const NotificationBell: React.FC = () => {
                         <span>{formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</span>
                       </div>
                     </div>
-                    {!item.isRead && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {!item.isRead && (
+                        <button
+                          onClick={() => markReadMutation.mutate(item.id)}
+                          className="p-1 text-slate-400 hover:text-emerald-400 hover:bg-emerald-950/40 rounded transition-colors"
+                          title="Mark as read"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
-                        onClick={() => markReadMutation.mutate(item.id)}
-                        className="p-1 text-slate-400 hover:text-emerald-400 hover:bg-emerald-950/40 rounded transition-colors"
-                        title="Mark as read"
+                        onClick={() => deleteNotificationMutation.mutate(item.id)}
+                        className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors opacity-70 group-hover:opacity-100"
+                        title="Delete notification"
                       >
-                        <Check className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    )}
+                    </div>
                   </div>
                 ))
               )}

@@ -43,9 +43,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   }, [task, defaultProjectId, reset]);
 
   const { data: projects } = useQuery({
-    queryKey: ['projects'],
+    queryKey: ['projects', 'all'],
     queryFn: async () => {
-      const res = await apiClient.get('/projects');
+      const res = await apiClient.get('/projects?limit=100');
       return res.data.data;
     },
     enabled: isOpen,
