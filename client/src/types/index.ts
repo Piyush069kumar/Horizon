@@ -14,6 +14,13 @@ export interface User {
   updatedAt: string;
 }
 
+export interface CreateUserInput {
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+}
+
 export interface ClientEntity {
   id: string;
   name: string;

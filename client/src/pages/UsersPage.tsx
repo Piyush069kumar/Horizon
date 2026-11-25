@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { apiClient } from '../lib/apiClient';
-import { User } from '../types';
+import { User, CreateUserInput } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import { RoleBadge } from '../components/RoleBadge';
+import { UserModal } from '../components/UserModal';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
-import { Users, Mail, Clock } from 'lucide-react';
+import { Users, Mail, Clock, UserPlus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { subscribePresenceDetails } from '../services/socketService';
 
 export const UsersPage: React.FC = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+
+  const isAdmin = user?.role === 'ADMIN';
 
   useEffect(() => {
     const unsubscribe = subscribePresenceDetails((data) => {
@@ -26,6 +34,22 @@ export const UsersPage: React.FC = () => {
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: async (data: CreateUserInput) => {
+      const res = await apiClient.post('/users', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['developers'] });
+      toast.success('User created successfully');
+    },
+  });
+
+  const handleCreateUser = async (data: CreateUserInput) => {
+    await createUserMutation.mutateAsync(data);
+  };
+
   if (isLoading) return <LoadingSkeleton count={6} />;
 
   return (
@@ -40,13 +64,26 @@ export const UsersPage: React.FC = () => {
             Registered system users, role assignments, and real-time online activity
           </p>
         </div>
-        <div className="flex items-center gap-2.5 bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs shadow-sm">
-          <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            {onlineUserIds.length} Online
-          </span>
-          <span className="text-slate-600">|</span>
-          <span className="text-slate-400 font-medium">{users?.length || 0} Total Team</span>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 bg-slate-900 border border-slate-800 px-3.5 py-2 rounded-xl text-xs shadow-sm">
+            <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              {onlineUserIds.length} Online
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className="text-slate-400 font-medium">{users?.length || 0} Total Team</span>
+          </div>
+
+          {isAdmin && (
+            <button
+              onClick={() => setIsUserModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-brand-600/30 transition-all cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Add User</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -104,6 +141,13 @@ export const UsersPage: React.FC = () => {
           );
         })}
       </div>
+
+      {/* User Creation Modal */}
+      <UserModal
+        isOpen={isUserModalOpen}
+        onClose={() => setIsUserModalOpen(false)}
+        onSubmit={handleCreateUser}
+      />
     </div>
   );
 };

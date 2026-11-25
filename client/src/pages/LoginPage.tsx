@@ -3,12 +3,13 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
-import { Zap, Lock, Mail, ArrowRight, ShieldCheck, UserCheck, Code2 } from 'lucide-react';
+import { Zap, Lock, Mail, ArrowRight, ShieldCheck, UserCheck, Code2, Eye, EyeOff } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
@@ -88,7 +89,7 @@ export const LoginPage: React.FC = () => {
                   type="email"
                   {...register('email', { required: 'Email is required' })}
                   className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all"
-                  placeholder="admin@velozity.demo"
+                  placeholder="admin@horizon.demo"
                 />
               </div>
               {errors.email && <p className="text-rose-400 text-xs mt-1">{errors.email.message as string}</p>}
@@ -99,11 +100,20 @@ export const LoginPage: React.FC = () => {
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   {...register('password', { required: 'Password is required' })}
-                  className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all"
+                  className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-9 pr-10 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all"
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors p-1"
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
               {errors.password && <p className="text-rose-400 text-xs mt-1">{errors.password.message as string}</p>}
             </div>
